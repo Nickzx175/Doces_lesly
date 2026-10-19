@@ -58,3 +58,15 @@ Projeto inicial de loja virtual responsiva para VS Code/Windows.
 - Os produtos e preços são exemplos e devem ser confirmados pela loja.
 - O painel administrativo ainda não foi implementado; a rota `/api/admin/orders` retorna 501 de propósito. Os pedidos são gravados localmente em JSON, o que serve para desenvolvimento mas não é adequado para uma loja com vários processos/servidores.
 - Para produção, use banco de dados gerenciado (ex.: PostgreSQL), autenticação de administradora, política de privacidade, HTTPS, validação de webhook e revisão de segurança.
+
+
+## Controle privado de vendas a prazo (novo)
+- Acesse `/admin` no domínio da loja.
+- O navegador solicitará usuário e senha. Configure `ADMIN_USER` e `ADMIN_PASSWORD` nas variáveis de ambiente do Render antes de usar. Use uma senha longa, única, e não compartilhe.
+- Registre cliente, descrição, data da compra, valor e vencimento.
+- O painel calcula total vendido, recebido e saldo em aberto para o período filtrado pela data da compra.
+- É possível registrar pagamentos parciais; o saldo é atualizado e a venda fica quitada quando chega a zero.
+- As APIs administrativas exigem autenticação. A página usa `noindex` como medida adicional, não como controle de acesso.
+
+## Aviso importante sobre persistência
+Esta primeira versão guarda vendas a prazo em `data/credit-sales.json`, assim como os pedidos em `data/orders.json`. No Render Free, arquivos locais podem ser apagados em novos deploys ou reinicializações. **Não use para guardar dívidas reais de clientes até migrarmos para um banco de dados persistente (recomendado PostgreSQL) e configurarmos backups.** Configure `ADMIN_PASSWORD` nas variáveis de ambiente do Render; sem ela, o painel permanece desativado. O `.env` nunca deve ser enviado ao GitHub.

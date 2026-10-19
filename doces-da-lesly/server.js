@@ -8,8 +8,11 @@ const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const BASE_URL = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
 const ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN || "";
+const ADMIN_USER = process.env.ADMIN_USER || "admin";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const DATA_DIR = path.join(__dirname, "data");
 const ORDERS_FILE = path.join(DATA_DIR, "orders.json");
+const CREDIT_FILE = path.join(DATA_DIR, "credit-sales.json");
 
 app.use(express.json({ limit: "100kb" }));
 app.use(express.static(path.join(__dirname, "public")));
@@ -29,6 +32,8 @@ async function ensureStore() {
   await fs.mkdir(DATA_DIR, { recursive: true });
   try { await fs.access(ORDERS_FILE); }
   catch { await fs.writeFile(ORDERS_FILE, "[]", "utf8"); }
+  try { await fs.access(CREDIT_FILE); }
+  catch { await fs.writeFile(CREDIT_FILE, "[]", "utf8"); }
 }
 async function readOrders() {
   await ensureStore();
@@ -39,6 +44,45 @@ async function writeOrders(orders) {
   await fs.writeFile(ORDERS_FILE, JSON.stringify(orders, null, 2), "utf8");
 }
 function money(n) { return Number(n).toFixed(2); }
+
+async function readCreditSales() {
+  await ensureStore();
+  return JSON.parse(await fs.readFile(CREDIT_FILE, "utf8"));
+}
+async function writeCreditSales(sales) {
+  await ensureStore();
+  await fs.writeFile(CREDIT_FILE, JSON.stringify(sales, null, 2), "utf8");
+}
+function adminAuth(req, res, next) {
+  if (!ADMIN_PASSWORD) {
+    return res.status(503).send("Painel administrativo desativado. Configure ADMIN_PASSWORD nas variáveis de ambiente do Render.");
+  }
+  const header = req.headers.authorization || "";
+  const [scheme, encoded] = header.split(" ");
+  if (scheme !== "Basic" || !encoded) {
+    res.set("WWW-Authenticate", 'Basic realm="Doces da Lesly - Administração", charset="UTF-8"');
+    return res.status(401).send("Autenticação necessária.");
+  }
+  let decoded = "";
+  try { decoded = Buffer.from(encoded, "base64").toString("utf8"); } catch {}
+  const separator = decoded.indexOf(":");
+  const username = separator >= 0 ? decoded.slice(0, separator) : "";
+  const password = separator >= 0 ? decoded.slice(separator + 1) : "";
+  const safeEqual = (a, b) => {
+    const aa = Buffer.from(String(a)); const bb = Buffer.from(String(b));
+    return aa.length === bb.length && crypto.timingSafeEqual(aa, bb);
+  };
+  if (!safeEqual(username, ADMIN_USER) || !safeEqual(password, ADMIN_PASSWORD)) {
+    res.set("WWW-Authenticate", 'Basic realm="Doces da Lesly - Administração", charset="UTF-8"');
+    return res.status(401).send("Usuário ou senha incorretos.");
+  }
+  next();
+}
+function creditTotals(sale) {
+  const paid = (sale.payments || []).reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  return { paid: Number(paid.toFixed(2)), balance: Number(Math.max(0, sale.amount - paid).toFixed(2)) };
+}
+
 
 app.get("/api/health", (_req, res) => res.json({ ok: true, store: "Doces da Lesly" }));
 app.get("/api/products", (_req, res) => res.json(PRODUCTS));
@@ -196,15 +240,87 @@ app.post("/api/payments/webhook", async (req, res) => {
   }
 });
 
-// Painel mínimo protegido por senha ainda não implementado: não exponha os pedidos
-// publicamente. Para produção, adicionar autenticação e permissões administrativas.
-app.get("/api/admin/orders", (_req, res) => {
-  return res.status(501).json({ error: "Painel administrativo protegido será implementado em uma próxima etapa." });
+
+// Painel privado de vendas a prazo. Protegido por autenticação HTTP Basic.
+// Configure ADMIN_USER e uma senha forte em Environment no Render.
+app.get("/admin", adminAuth, (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin.html"));
 });
+
+app.get("/api/admin/credit-sales", adminAuth, async (req, res) => {
+  try {
+    const from = String(req.query.from || "");
+    const to = String(req.query.to || "");
+    const query = String(req.query.q || "").trim().toLocaleLowerCase("pt-BR");
+    const sales = await readCreditSales();
+    const filtered = sales.filter(sale => {
+      const day = sale.saleDate;
+      return (!from || day >= from) && (!to || day <= to) &&
+        (!query || sale.customer.toLocaleLowerCase("pt-BR").includes(query) ||
+          sale.description.toLocaleLowerCase("pt-BR").includes(query));
+    }).map(sale => ({ ...sale, ...creditTotals(sale) }))
+      .sort((a, b) => b.saleDate.localeCompare(a.saleDate));
+    const totals = filtered.reduce((acc, sale) => {
+      acc.amount += sale.amount; acc.paid += sale.paid; acc.balance += sale.balance;
+      return acc;
+    }, { amount: 0, paid: 0, balance: 0 });
+    Object.keys(totals).forEach(k => totals[k] = Number(totals[k].toFixed(2)));
+    res.json({ sales: filtered, totals });
+  } catch (err) {
+    console.error(err); res.status(500).json({ error: "Não foi possível carregar as vendas." });
+  }
+});
+
+app.post("/api/admin/credit-sales", adminAuth, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const customer = String(body.customer || "").trim().slice(0, 120);
+    const description = String(body.description || "").trim().slice(0, 300);
+    const saleDate = String(body.saleDate || "");
+    const dueDate = String(body.dueDate || "");
+    const amount = Number(body.amount);
+    const validDate = value => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
+    if (!customer || !description || !validDate(saleDate) || !validDate(dueDate) ||
+        !Number.isFinite(amount) || amount <= 0 || amount > 10000000) {
+      return res.status(400).json({ error: "Informe cliente, descrição, datas válidas e valor maior que zero." });
+    }
+    const sale = {
+      id: crypto.randomUUID(), customer, description, saleDate, dueDate,
+      amount: Number(amount.toFixed(2)), payments: [], createdAt: new Date().toISOString()
+    };
+    const sales = await readCreditSales();
+    sales.push(sale);
+    await writeCreditSales(sales);
+    res.status(201).json({ sale: { ...sale, ...creditTotals(sale) } });
+  } catch (err) {
+    console.error(err); res.status(500).json({ error: "Não foi possível registrar a venda." });
+  }
+});
+
+app.post("/api/admin/credit-sales/:id/payments", adminAuth, async (req, res) => {
+  try {
+    const amount = Number(req.body?.amount);
+    const date = String(req.body?.date || new Date().toISOString().slice(0, 10));
+    if (!Number.isFinite(amount) || amount <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: "Informe um valor de pagamento válido e a data." });
+    }
+    const sales = await readCreditSales();
+    const index = sales.findIndex(s => s.id === req.params.id);
+    if (index < 0) return res.status(404).json({ error: "Venda não encontrada." });
+    const totals = creditTotals(sales[index]);
+    if (amount > totals.balance + 0.001) return res.status(400).json({ error: "O pagamento é maior que o saldo devedor." });
+    sales[index].payments.push({ id: crypto.randomUUID(), amount: Number(amount.toFixed(2)), date, createdAt: new Date().toISOString() });
+    await writeCreditSales(sales);
+    res.json({ sale: { ...sales[index], ...creditTotals(sales[index]) } });
+  } catch (err) {
+    console.error(err); res.status(500).json({ error: "Não foi possível registrar o pagamento." });
+  }
+});
+
 
 app.get("*", (_req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Doces da Lesly rodando em ${BASE_URL}`);
   console.log(`Abra no navegador: http://localhost:${PORT}`);
 });
