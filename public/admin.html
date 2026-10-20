@@ -1,0 +1,690 @@
+
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Administração | Doces da Lesly</title>
+  <link rel="stylesheet" href="/css/style.css">
+
+  <style>
+    .admin-wrap {
+      max-width: 1100px;
+      margin: 32px auto;
+      padding: 0 18px;
+    }
+
+    .admin-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .admin-head h1 {
+      margin: 0;
+    }
+
+    .admin-panel {
+      background: #fff;
+      border: 1px solid #f0dbe2;
+      border-radius: 18px;
+      padding: 20px;
+      margin: 22px 0;
+      box-shadow: 0 8px 30px #6b26300d;
+    }
+
+    .admin-form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .admin-form label,
+    .filters label {
+      display: grid;
+      gap: 6px;
+      font-weight: 600;
+    }
+
+    .admin-form input,
+    .filters input {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 11px;
+      border: 1px solid #e6cbd5;
+      border-radius: 10px;
+      font: inherit;
+    }
+
+    .admin-form .wide {
+      grid-column: 1 / -1;
+    }
+
+    .admin-btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 15px;
+      cursor: pointer;
+      font-weight: 700;
+      background: #bd5277;
+      color: white;
+    }
+
+    .admin-btn:disabled {
+      opacity: 0.65;
+      cursor: wait;
+    }
+
+    .admin-btn.alt {
+      background: #f7e7ee;
+      color: #8d3153;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      background: #fff2f6;
+      padding: 16px;
+      border-radius: 14px;
+    }
+
+    .metric span {
+      display: block;
+      color: #80576a;
+      font-size: 0.9rem;
+    }
+
+    .metric strong {
+      font-size: 1.35rem;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.5fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .sales-list {
+      overflow-x: auto;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 700px;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 12px 9px;
+      border-bottom: 1px solid #f1dce4;
+    }
+
+    th {
+      font-size: 0.9rem;
+      color: #80576a;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 99px;
+      background: #fff0c9;
+      color: #785b12;
+      font-size: 0.8rem;
+    }
+
+    .pill.paid {
+      background: #def7e8;
+      color: #17623a;
+    }
+
+    .small {
+      font-size: 0.86rem;
+      color: #7b6670;
+    }
+
+    .message {
+      margin: 12px 0;
+      font-weight: 600;
+    }
+
+    .error {
+      color: #a5213b;
+    }
+
+    .success {
+      color: #17623a;
+    }
+
+    @media (max-width: 650px) {
+      .admin-form,
+      .metrics,
+      .filters {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-form .wide {
+        grid-column: auto;
+      }
+
+      .admin-panel {
+        padding: 15px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="topbar">
+    <a class="logo" href="/">
+      🍓 Doces <span>da Lesly</span>
+    </a>
+
+    <nav style="display:flex;gap:8px;flex-wrap:wrap"><a class="cart-button" href="/">Ver loja ↗</a><a class="cart-button" href="#cadastro-admin">Cadastro de administradores ↓</a></nav>
+  </header>
+
+  <main class="admin-wrap">
+    <div class="admin-head">
+      <div>
+        <span class="eyebrow">ÁREA PRIVADA</span>
+        <h1>Controle de vendas a prazo</h1>
+        <p class="small">
+          Registre compras, vencimentos e pagamentos por cliente.
+        </p>
+      </div>
+
+      <button id="refresh" class="admin-btn alt" type="button">
+        Atualizar lista
+      </button>
+    </div>
+
+    <div
+      id="message"
+      class="message"
+      role="status"
+      aria-live="polite"
+    ></div>
+
+    <!-- Formulário de cadastro -->
+    <section class="admin-panel">
+      <h2>Registrar nova venda</h2>
+
+      <form id="sale-form" class="admin-form">
+        <label>
+          Nome do cliente
+          <input
+            name="customer"
+            required
+            maxlength="120"
+            placeholder="Ex.: Maria Silva"
+          >
+        </label>
+
+        <label>
+          Valor total (R$)
+          <input
+            name="amount"
+            required
+            type="number"
+            min="0.01"
+            max="10000000"
+            step="0.01"
+            placeholder="0,00"
+          >
+        </label>
+
+        <label>
+          Data da compra
+          <input name="saleDate" required type="date">
+        </label>
+
+        <label>
+          Data de vencimento
+          <input name="dueDate" required type="date">
+        </label>
+
+        <label class="wide">
+          Descrição da compra
+          <input
+            name="description"
+            required
+            maxlength="300"
+            placeholder="Ex.: 10 brigadeiros e 1 bolo"
+          >
+        </label>
+
+        <div class="wide">
+          <button class="admin-btn" type="submit">
+            ＋ Registrar venda a prazo
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Cadastro protegido de administradores -->
+    <section class="admin-panel" id="cadastro-admin">
+      <h2>Cadastro de administradores</h2>
+      <p class="small">Crie acessos adicionais para pessoas autorizadas. Esta área só abre após entrar com uma conta administrativa existente.</p>
+      <form id="admin-form" class="admin-form">
+        <label>
+          Nome de usuário
+          <input name="username" required minlength="3" maxlength="40" pattern="[A-Za-z0-9._-]{3,40}" autocomplete="off" placeholder="Ex.: atendente01">
+        </label>
+        <label>
+          Senha forte
+          <input name="password" type="password" required minlength="12" maxlength="200" autocomplete="new-password" placeholder="Mínimo de 12 caracteres">
+        </label>
+        <div class="wide">
+          <button class="admin-btn" type="submit">＋ Cadastrar administrador</button>
+        </div>
+      </form>
+      <p class="small">As senhas são armazenadas como hashes, não em texto puro. Use uma senha exclusiva para cada pessoa.</p>
+    </section>
+
+    <!-- Resumo financeiro -->
+    <section class="admin-panel">
+      <h2>Resumo do período</h2>
+
+      <div class="metrics">
+        <div class="metric">
+          <span>Total vendido</span>
+          <strong id="total-sold">R$ 0,00</strong>
+        </div>
+
+        <div class="metric">
+          <span>Total recebido</span>
+          <strong id="total-paid">R$ 0,00</strong>
+        </div>
+
+        <div class="metric">
+          <span>Saldo em aberto</span>
+          <strong id="total-balance">R$ 0,00</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- Histórico e filtros -->
+    <section class="admin-panel">
+      <h2>Histórico de vendas</h2>
+
+      <div class="filters">
+        <label>
+          De
+          <input type="date" id="from">
+        </label>
+
+        <label>
+          Até
+          <input type="date" id="to">
+        </label>
+
+        <label>
+          Cliente ou descrição
+          <input
+            id="query"
+            type="search"
+            placeholder="Buscar..."
+          >
+        </label>
+
+        <button id="filter" class="admin-btn" type="button">
+          Filtrar
+        </button>
+      </div>
+
+      <p class="small">
+        O período filtra pela data da compra. O saldo considera
+        pagamentos parciais registrados.
+      </p>
+
+      <div class="sales-list">
+        <table>
+          <thead>
+            <tr>
+              <th>Compra / Cliente</th>
+              <th>Vencimento</th>
+              <th>Valor</th>
+              <th>Pago</th>
+              <th>Em aberto</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+
+          <tbody id="sales">
+            <tr>
+              <td colspan="6">Carregando...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <p class="small">
+      Privacidade: mantenha esta área apenas com a responsável pela loja.
+      Não compartilhe a senha administrativa.
+    </p>
+  </main>
+
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+
+    const brl = (value) =>
+      Number(value || 0).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+      });
+
+    function getTodayISO() {
+      const now = new Date();
+
+      return new Date(
+        now.getTime() - now.getTimezoneOffset() * 60000
+      )
+        .toISOString()
+        .slice(0, 10);
+    }
+
+    function setDefaultDates() {
+      const today = getTodayISO();
+      const saleDate = $('input[name="saleDate"]');
+      const dueDate = $('input[name="dueDate"]');
+
+      if (saleDate) saleDate.value = today;
+      if (dueDate) dueDate.value = today;
+    }
+
+    function msg(text, type = "") {
+      const element = $("#message");
+
+      if (!element) return;
+
+      element.textContent = text;
+      element.className = `message ${type}`.trim();
+    }
+
+    async function api(url, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...(options.headers || {})
+        }
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || "Falha na solicitação.");
+      }
+
+      return data;
+    }
+
+    function dateBR(value) {
+      if (!value) return "—";
+
+      const [year, month, day] = value.split("-");
+
+      return `${day}/${month}/${year}`;
+    }
+
+    function esc(value) {
+      return String(value).replace(/[&<>"']/g, (character) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      })[character]);
+    }
+
+    function getSalesFilters() {
+      const params = new URLSearchParams();
+      const from = $("#from")?.value;
+      const to = $("#to")?.value;
+      const query = $("#query")?.value.trim();
+
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+      if (query) params.set("q", query);
+
+      return params;
+    }
+
+    async function loadSales() {
+      const salesElement = $("#sales");
+
+      if (!salesElement) return;
+
+      salesElement.innerHTML =
+        '<tr><td colspan="6">Carregando...</td></tr>';
+
+      try {
+        const params = getSalesFilters();
+        const data = await api(
+          `/api/admin/credit-sales?${params.toString()}`
+        );
+
+        $("#total-sold").textContent = brl(data.totals.amount);
+        $("#total-paid").textContent = brl(data.totals.paid);
+        $("#total-balance").textContent = brl(data.totals.balance);
+
+        if (!data.sales.length) {
+          salesElement.innerHTML =
+            '<tr><td colspan="6">Nenhuma venda encontrada neste filtro.</td></tr>';
+          return;
+        }
+
+        salesElement.innerHTML = data.sales.map((sale) => {
+          const overdue =
+            sale.balance > 0 && sale.dueDate < getTodayISO();
+
+          const paidOff = sale.balance <= 0;
+
+          const paymentButton = !paidOff
+            ? `<button
+                 class="admin-btn alt"
+                 type="button"
+                 data-pay="${esc(sale.id)}"
+                 data-balance="${Number(sale.balance)}"
+               >Registrar pagamento</button>`
+            : "—";
+
+          return `
+            <tr>
+              <td>
+                <strong>${esc(sale.customer)}</strong><br>
+                <span class="small">
+                  ${esc(sale.description)} · ${dateBR(sale.saleDate)}
+                </span>
+              </td>
+
+              <td>
+                ${dateBR(sale.dueDate)}
+                ${overdue
+                  ? '<br><span class="pill">Vencida</span>'
+                  : ""}
+              </td>
+
+              <td>${brl(sale.amount)}</td>
+              <td>${brl(sale.paid)}</td>
+
+              <td>
+                <strong>${brl(sale.balance)}</strong>
+                ${paidOff
+                  ? '<br><span class="pill paid">Quitada</span>'
+                  : ""}
+              </td>
+
+              <td>${paymentButton}</td>
+            </tr>
+          `;
+        }).join("");
+
+        salesElement.querySelectorAll("[data-pay]").forEach((button) => {
+          button.addEventListener("click", () => {
+            pay(
+              button.dataset.pay,
+              Number(button.dataset.balance)
+            );
+          });
+        });
+      } catch (error) {
+        salesElement.innerHTML =
+          '<tr><td colspan="6">Não foi possível carregar as vendas.</td></tr>';
+
+        msg(error.message, "error");
+      }
+    }
+
+    async function pay(id, balance) {
+      const raw = prompt(
+        `Saldo em aberto: ${brl(balance)}\nQuanto a cliente pagou agora?`
+      );
+
+      if (raw === null) return;
+
+      const amount = Number(raw.trim().replace(",", "."));
+
+      if (!Number.isFinite(amount) || amount <= 0) {
+        msg("Informe um valor válido.", "error");
+        return;
+      }
+
+      if (amount > balance) {
+        msg(
+          "O pagamento não pode ser maior que o saldo em aberto.",
+          "error"
+        );
+        return;
+      }
+
+      try {
+        await api(
+          `/api/admin/credit-sales/${encodeURIComponent(id)}/payments`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              amount,
+              date: getTodayISO()
+            })
+          }
+        );
+
+        msg("Pagamento registrado com sucesso.", "success");
+        await loadSales();
+      } catch (error) {
+        msg(error.message, "error");
+      }
+    }
+
+    async function handleSaleSubmit(event) {
+      event.preventDefault();
+
+      const form = event.currentTarget;
+
+      if (!(form instanceof HTMLFormElement)) {
+        msg(
+          "Não foi possível localizar o formulário de venda.",
+          "error"
+        );
+        return;
+      }
+
+      const submitButton = form.querySelector('[type="submit"]');
+
+      if (submitButton) {
+        submitButton.disabled = true;
+      }
+
+      const formData = new FormData(form);
+      const payload = Object.fromEntries(formData.entries());
+
+      payload.amount = Number(payload.amount);
+
+      try {
+        await api("/api/admin/credit-sales", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+
+        form.reset();
+        setDefaultDates();
+
+        msg(
+          "Venda a prazo registrada com sucesso.",
+          "success"
+        );
+
+        await loadSales();
+      } catch (error) {
+        msg(error.message, "error");
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = false;
+        }
+      }
+    }
+
+    async function handleAdminSubmit(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector('[type="submit"]');
+      const formData = new FormData(form);
+      if (button) { button.disabled = true; button.textContent = "Cadastrando..."; }
+      try {
+        const result = await api("/api/admin/admins", {
+          method: "POST",
+          body: JSON.stringify({
+            username: String(formData.get("username") || "").trim(),
+            password: String(formData.get("password") || "")
+          })
+        });
+        form.reset();
+        msg(result.message, "success");
+      } catch (error) {
+        msg(error.message, "error");
+      } finally {
+        if (button) { button.disabled = false; button.textContent = "＋ Cadastrar administrador"; }
+      }
+    }
+
+    function initializeAdmin() {
+      setDefaultDates();
+
+      $("#admin-form")?.addEventListener("submit", handleAdminSubmit);
+      $("#sale-form")?.addEventListener(
+        "submit",
+        handleSaleSubmit
+      );
+
+      $("#refresh")?.addEventListener("click", loadSales);
+      $("#filter")?.addEventListener("click", loadSales);
+
+      loadSales();
+
+      // Atualiza a lista a cada 30 segundos, sem precisar apertar F5.
+      window.setInterval(loadSales, 30000);
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener(
+        "DOMContentLoaded",
+        initializeAdmin
+      );
+    } else {
+      initializeAdmin();
+    }
+  </script>
+</body>
+</html>

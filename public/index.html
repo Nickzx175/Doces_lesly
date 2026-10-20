@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#fff1f5">
+<title>Doces da Lesly | Loja de doces</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="topbar"><a class="logo" href="/">🍓 Doces <span>da Lesly</span></a><nav style="display:flex;align-items:center;gap:8px"><a class="cart-button" href="/admin">Área administrativa ↗</a><button class="cart-button" id="open-cart">🛒 Carrinho <b id="cart-count">0</b></button></nav></header>
+<main>
+<section class="hero"><div><span class="eyebrow">FEITO COM CARINHO ♡</span><h1>Um docinho<br>muda o dia.</h1><p>Delícias artesanais para adoçar seus momentos especiais.</p><button class="btn" id="shop-now">Ver nossos doces ↓</button></div><div class="hero-emoji">🧁🍫</div></section>
+<section class="section"><div class="section-title"><h2>Escolha sua delícia</h2><span>Feitos com amor</span></div><div id="categories" class="categories"></div></section>
+<section class="section" id="catalogo"><div class="section-title"><h2>Nossos doces</h2><span id="result-count"></span></div><div id="products" class="products"><p>Carregando doces...</p></div></section>
+<section class="promo"><div><strong>🎁 Vai presentear alguém?</strong><p>Monte seu pedido e deixe o dia mais doce.</p></div><button class="btn secondary" id="open-cart-2">Ver carrinho</button></section>
+</main>
+<footer><strong>Doces da Lesly</strong><br>Feito com amor, entregue com carinho 💗<p>Valores ilustrativos: confirme disponibilidade e taxa de entrega com a loja.</p></footer>
+<div class="overlay" id="overlay" aria-hidden="true"><section class="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title"><div class="drawer-head"><h2 id="cart-title">Seu carrinho 🛍️</h2><button class="close" id="close-cart" aria-label="Fechar">×</button></div><div id="cart-items"></div><div id="cart-summary"></div>
+<form id="checkout-form">
+<h3>Dados do pedido</h3>
+<label>Nome completo<input name="name" required maxlength="100" autocomplete="name" placeholder="Seu nome"></label>
+<label>WhatsApp<input name="phone" required maxlength="30" autocomplete="tel" placeholder="(14) 99999-9999"></label>
+<label>Como deseja receber?<select name="delivery" id="delivery"><option value="Entrega">Entrega</option><option value="Retirada">Retirada no local</option></select></label>
+<label id="address-label">Endereço completo<input name="address" id="address" required maxlength="300" autocomplete="street-address" placeholder="Rua, número, bairro e complemento"></label>
+<label>Observações (opcional)<textarea name="notes" rows="2" maxlength="500" placeholder="Referência ou detalhes do pedido"></textarea></label>
+<h3>Pagamento</h3>
+<div class="pay-options"><label class="pay-card"><input type="radio" name="paymentMethod" value="pix" checked><span>🔷 <b>Pix</b><small>Disponibilidade conforme checkout</small></span></label><label class="pay-card"><input type="radio" name="paymentMethod" value="card"><span>💳 <b>Cartão</b><small>Crédito ou débito conforme conta</small></span></label></div>
+<p class="notice">O pagamento é processado no ambiente seguro do Mercado Pago. Não informe os dados do cartão diretamente neste site.</p>
+<button class="btn full" type="submit" id="submit-order">Finalizar pedido</button><p class="form-message" id="form-message" role="status"></p>
+</form></section></div>
+<script src="/js/app.js"></script>
+</body></html>
